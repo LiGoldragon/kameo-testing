@@ -2,7 +2,7 @@
 //!
 //! Each test name reads as a falsifiable claim about Kameo 0.20.
 
-use std::convert::Infallible;
+use kameo::error::Infallible;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};

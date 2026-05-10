@@ -1,6 +1,6 @@
 //! Message tests — per-kind `Message<T>` impls, replies, DelegatedReply.
 
-use std::convert::Infallible;
+use kameo::error::Infallible;
 use std::time::Duration;
 
 use kameo::Actor;

@@ -5,8 +5,7 @@
 //! `kameo::registry::ACTOR_REGISTRY`. Both `register` and `lookup` are
 //! synchronous in this mode.
 
-use std::convert::Infallible;
-use std::time::Duration;
+use kameo::error::Infallible;
 
 use kameo::Actor;
 use kameo::actor::{ActorRef, Spawn};
@@ -85,9 +84,12 @@ async fn registry_entry_auto_removed_on_actor_stop() {
     actor_ref.kill();
     actor_ref.wait_for_shutdown().await;
 
-    // Give the lifecycle driver a beat to run unregister_actor.
-    tokio::time::sleep(Duration::from_millis(50)).await;
-
+    // No sleep needed — `wait_for_shutdown` returns after the
+    // lifecycle driver has run `unregister_actor`. (Per DA/5
+    // §"Local registry": "Asserts duplicate-register fails, lookup
+    // finds, and post-shutdown lookup returns None. **No sleep** —
+    // relies on `wait_for_shutdown().await` finishing the
+    // unregistration synchronously.")
     let found = ActorRef::<Echo>::lookup(name).expect("lookup ok");
     assert!(found.is_none(), "entry should be gone after actor stop");
 }

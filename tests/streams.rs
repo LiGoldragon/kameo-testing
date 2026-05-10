@@ -1,9 +1,6 @@
 //! Stream tests — `ActorRef::attach_stream` and the `StreamMessage` envelope.
 
-use std::convert::Infallible;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::time::Duration;
+use kameo::error::Infallible;
 
 use futures::stream;
 use kameo::Actor;
@@ -17,8 +14,14 @@ enum Trace {
     Finished(&'static str),
 }
 
+// Trace lives on the actor itself — no shared lock. The actor is the
+// owner; the test reads via `ask(ReadTrace)` which clones the inner
+// Vec on demand. Per skills/actor-systems.md §"No shared locks":
+// `Arc<Mutex<...>>` inside an actor is the gratuitous-shared-lock
+// anti-pattern even when only the actor itself touches the lock —
+// the lock is dead weight when the data already has a single owner.
 struct Recorder {
-    trace: Arc<Mutex<Vec<Trace>>>,
+    trace: Vec<Trace>,
 }
 
 impl Actor for Recorder {
@@ -42,7 +45,7 @@ impl Message<StreamMessage<i64, &'static str, &'static str>> for Recorder {
             StreamMessage::Next(n) => Trace::Next(n),
             StreamMessage::Finished(f) => Trace::Finished(f),
         };
-        self.trace.lock().unwrap().push(trace);
+        self.trace.push(trace);
     }
 }
 
@@ -51,25 +54,23 @@ struct ReadTrace;
 impl Message<ReadTrace> for Recorder {
     type Reply = Vec<Trace>;
     async fn handle(&mut self, _msg: ReadTrace, _ctx: &mut Context<Self, Self::Reply>) -> Vec<Trace> {
-        self.trace.lock().unwrap().clone()
+        self.trace.clone()
     }
 }
 
 /// `attach_stream` delivers `Started`, then one `Next` per item, then
-/// `Finished`. The actor sees them in order.
+/// `Finished`. The actor sees them in order. After `handle.await`
+/// returns, the Finished message is in the actor's mailbox; subsequent
+/// `ask(ReadTrace)` is enqueued after Finished and the mailbox is FIFO,
+/// so by the time `ReadTrace`'s handler runs the trace contains the
+/// full sequence — no sleep needed.
 #[tokio::test(flavor = "multi_thread")]
 async fn attach_stream_delivers_started_next_finished_in_order() {
-    let trace = Arc::new(Mutex::new(Vec::new()));
-    let actor_ref = Recorder::spawn(Recorder { trace: trace.clone() });
+    let actor_ref = Recorder::spawn(Recorder { trace: Vec::new() });
 
     let stream = stream::iter([1_i64, 2, 3]);
     let handle = actor_ref.attach_stream(stream, "begin", "end");
-
-    // Wait for the forwarder task to drain the stream.
     let _ = handle.await.expect("attach_stream task joins").expect("no SendError");
-
-    // Give the actor a moment to process the Finished message.
-    tokio::time::sleep(Duration::from_millis(50)).await;
 
     let observed = actor_ref.ask(ReadTrace).await.expect("read trace ok");
     assert_eq!(
@@ -87,14 +88,11 @@ async fn attach_stream_delivers_started_next_finished_in_order() {
 /// Empty stream still produces Started and Finished envelopes.
 #[tokio::test(flavor = "multi_thread")]
 async fn attach_stream_empty_still_emits_started_and_finished() {
-    let trace = Arc::new(Mutex::new(Vec::new()));
-    let actor_ref = Recorder::spawn(Recorder { trace: trace.clone() });
+    let actor_ref = Recorder::spawn(Recorder { trace: Vec::new() });
 
     let stream = stream::iter(Vec::<i64>::new());
     let handle = actor_ref.attach_stream(stream, "alpha", "omega");
-
     let _ = handle.await.expect("attach_stream task joins").expect("no SendError");
-    tokio::time::sleep(Duration::from_millis(50)).await;
 
     let observed = actor_ref.ask(ReadTrace).await.expect("read trace ok");
     assert_eq!(

@@ -1,7 +1,7 @@
 //! Spawn tests — `spawn`, `spawn_with_mailbox`, `prepare/run`,
 //! `spawn_in_thread`.
 
-use std::convert::Infallible;
+use kameo::error::Infallible;
 use std::time::Duration;
 
 use kameo::Actor;

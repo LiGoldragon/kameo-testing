@@ -3,7 +3,7 @@
 //! Run on multi-thread runtime so spawn paths inside async hooks aren't
 //! constrained to current-thread.
 
-use std::convert::Infallible;
+use kameo::error::Infallible;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;

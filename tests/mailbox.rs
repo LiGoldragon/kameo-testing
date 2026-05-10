@@ -3,7 +3,7 @@
 //! Default mailbox is bounded with `DEFAULT_MAILBOX_CAPACITY = 64` per
 //! `kameo::actor` (private constant; named in `notes/findings.md`).
 
-use std::convert::Infallible;
+use kameo::error::Infallible;
 use std::time::Duration;
 
 use kameo::Actor;

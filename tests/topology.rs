@@ -5,7 +5,7 @@
 //! testing Kameo's behavior; they are testing that an actor written
 //! the workspace way *fits* Kameo natively.
 
-use std::convert::Infallible;
+use kameo::error::Infallible;
 use std::mem::size_of;
 
 use kameo::actor::{ActorRef, Spawn};

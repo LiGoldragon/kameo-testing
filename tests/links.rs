@@ -1,6 +1,6 @@
 //! Link tests — bidirectional sibling links and `on_link_died`.
 
-use std::convert::Infallible;
+use kameo::error::Infallible;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
