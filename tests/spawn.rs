@@ -4,10 +4,10 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
-use kameo::actor::{ActorRef, Spawn};
-use kameo::mailbox::Mailbox;
-use kameo::message::{Context, Message};
 use kameo::Actor;
+use kameo::actor::{ActorRef, Spawn};
+use kameo::mailbox;
+use kameo::message::{Context, Message};
 
 /// `Spawn::spawn(args)` is synchronous and returns `ActorRef<A>`. The
 /// actor runs on the current Tokio runtime.
@@ -56,7 +56,7 @@ async fn spawn_with_mailbox_uses_custom_capacity() {
     }
 
     // 4-slot bounded mailbox — small enough to demonstrate sizing.
-    let actor_ref = Sink::spawn_with_mailbox(Sink, Mailbox::bounded(4));
+    let actor_ref = Sink::spawn_with_mailbox(Sink, mailbox::bounded(4));
     actor_ref.ask(Ping).await.expect("ask through small mailbox");
 }
 
@@ -93,7 +93,7 @@ async fn unbounded_mailbox_accepts_many_pending_messages() {
 
     let actor_ref = Counter::spawn_with_mailbox(
         Counter { received: 0 },
-        Mailbox::unbounded(),
+        mailbox::unbounded(),
     );
 
     // Push 1000 tells without awaiting; an unbounded mailbox should

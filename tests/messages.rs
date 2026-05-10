@@ -3,10 +3,11 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
+use kameo::Actor;
 use kameo::actor::{ActorRef, Spawn};
+use kameo::error::SendError;
 use kameo::message::{Context, Message};
 use kameo::reply::DelegatedReply;
-use kameo::Actor;
 
 /// One actor can implement `Message<T>` for many distinct request
 /// types; each impl carries its own `Reply` type.
@@ -132,11 +133,18 @@ async fn result_reply_propagates_handler_error_to_caller() {
     }
 
     let actor_ref = Divider::spawn(Divider);
-    let ok = actor_ref.ask(Divide { num: 10, den: 2 }).await.expect("ask ok");
-    assert_eq!(ok, Ok(5));
 
-    let err = actor_ref.ask(Divide { num: 10, den: 0 }).await.expect("ask ok");
-    assert_eq!(err, Err(DivisionError::ByZero));
+    // ask().await unwraps Reply::Value: a Result-typed handler that returns
+    // Ok(T) gives the caller Ok(T) directly; Err(E) is wrapped as
+    // SendError::HandlerError(E).
+    let ok_value = actor_ref.ask(Divide { num: 10, den: 2 }).await.expect("ok divide");
+    assert_eq!(ok_value, 5);
+
+    let err = actor_ref.ask(Divide { num: 10, den: 0 }).await;
+    match err {
+        Err(SendError::HandlerError(DivisionError::ByZero)) => {}
+        other => panic!("expected HandlerError(ByZero), got {other:?}"),
+    }
 }
 
 /// `DelegatedReply` lets a handler defer the reply to a spawned task

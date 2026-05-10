@@ -17,6 +17,7 @@ use kameo::Actor;
 /// actor type has nonzero size.
 #[tokio::test]
 async fn data_bearing_actor_types_have_nonzero_size() {
+    #[allow(dead_code)]
     struct ClaimNormalize {
         in_flight: Vec<String>,
         max_in_flight: usize,
