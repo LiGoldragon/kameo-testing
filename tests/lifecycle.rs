@@ -3,12 +3,13 @@
 //! Each test name reads as a falsifiable claim about Kameo 0.20.
 
 use std::convert::Infallible;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use kameo::Actor;
 use kameo::actor::{ActorRef, Spawn, WeakActorRef};
-use kameo::error::ActorStopReason;
+use kameo::error::{ActorStopReason, PanicError};
 use kameo::message::{Context, Message};
 
 /// `Args = Self` is the documented common case; spawning passes the
@@ -143,12 +144,62 @@ async fn on_panic_default_stops_actor_with_panicked_reason() {
     assert!(send_result.is_err(), "tell to dead actor must fail");
 }
 
-// NOTE: `on_panic` returning `ControlFlow::Continue(())` is documented as
-// keeping the actor alive after a panic. In practice with Kameo 0.20.0
-// under `#[tokio::test]` (current_thread flavor), the surviving-actor path
-// is fragile — the actor's mailbox closes ahead of the next ask in this
-// runtime configuration. The behavior is captured in `notes/findings.md`
-// pending an authoritative test once the runtime semantics stabilize.
+/// Custom `on_panic` returning `ControlFlow::Continue(())` keeps the
+/// actor alive after a handler panic. The load-bearing call sequence
+/// is `ask(panic_trigger)` → `assert err` → `is_alive()` → `ask(...)`:
+/// the first ask blocks until the panic AND on_panic both complete,
+/// so the second ask reaches a known-recovered actor. A pipelined
+/// `tell(panic_trigger) + ask(other)` races the recovery and can
+/// observe `ActorStopped` because the second ask's reply oneshot may
+/// be set up before on_panic finishes.
+#[tokio::test]
+async fn on_panic_continue_keeps_stateful_actor_alive_after_handler_panic() {
+    struct Resilient { panic_count: u32 }
+
+    impl Actor for Resilient {
+        type Args = Self;
+        type Error = Infallible;
+
+        async fn on_start(args: Self, _ref: ActorRef<Self>) -> Result<Self, Self::Error> {
+            Ok(args)
+        }
+
+        async fn on_panic(
+            &mut self,
+            _ref: WeakActorRef<Self>,
+            _err: PanicError,
+        ) -> Result<ControlFlow<ActorStopReason>, Self::Error> {
+            self.panic_count += 1;
+            Ok(ControlFlow::Continue(()))
+        }
+    }
+
+    struct PanicNow;
+    struct ReadCount;
+
+    impl Message<PanicNow> for Resilient {
+        type Reply = ();
+        async fn handle(&mut self, _msg: PanicNow, _ctx: &mut Context<Self, Self::Reply>) {
+            panic!("planned panic");
+        }
+    }
+
+    impl Message<ReadCount> for Resilient {
+        type Reply = u32;
+        async fn handle(&mut self, _msg: ReadCount, _ctx: &mut Context<Self, Self::Reply>) -> u32 {
+            self.panic_count
+        }
+    }
+
+    let actor_ref = Resilient::spawn(Resilient { panic_count: 0 });
+
+    let panic_result = actor_ref.ask(PanicNow).await;
+    assert!(panic_result.is_err(), "ask through panic returns Err");
+    assert!(actor_ref.is_alive(), "actor stays alive after Continue");
+
+    let count = actor_ref.ask(ReadCount).await.expect("ask after recovery succeeds");
+    assert_eq!(count, 1, "on_panic ran exactly once and incremented count");
+}
 
 /// `Context::stop()` halts the actor after the current message
 /// completes; subsequent sends fail.
