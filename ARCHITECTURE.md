@@ -42,7 +42,3 @@ tests/
 - `~/primary/skills/kameo.md` — the skill this repo backs.
 - `~/primary/skills/actor-systems.md` — the actor discipline Kameo
   serves.
-- `~/primary/reports/designer/102-kameo-deep-dive.md` — the original
-  research that motivated the switch.
-- `~/primary/reports/operator/103-actor-abstraction-drift-correction.md`
-  — the corrective report that retired the wrapper-crate hallucination.
