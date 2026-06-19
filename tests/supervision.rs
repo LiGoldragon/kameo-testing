@@ -4,14 +4,14 @@
 //! constrained to current-thread.
 
 use kameo::error::Infallible;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
-use kameo::Actor;
 use kameo::actor::{ActorRef, Spawn};
 use kameo::message::{Context, Message};
-use kameo::supervision::{RestartPolicy, SupervisionStrategy};
+use kameo::supervision::RestartPolicy;
+use kameo::Actor;
 
 // ── Restart-counter child ────────────────────────────────────────────────
 //
@@ -33,7 +33,9 @@ impl Actor for CrashCounter {
 
     async fn on_start(args: Self::Args, _ref: ActorRef<Self>) -> Result<Self, Self::Error> {
         args.starts.fetch_add(1, Ordering::SeqCst);
-        Ok(CrashCounter { starts: args.starts })
+        Ok(CrashCounter {
+            starts: args.starts,
+        })
     }
 }
 
@@ -76,7 +78,9 @@ async fn restart_policy_permanent_restarts_child_after_panic() {
 
     let child = CrashCounter::supervise(
         &supervisor,
-        CounterArgs { starts: starts.clone() },
+        CounterArgs {
+            starts: starts.clone(),
+        },
     )
     .restart_policy(RestartPolicy::Permanent)
     .spawn()
@@ -100,7 +104,11 @@ async fn restart_policy_permanent_restarts_child_after_panic() {
         }
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    assert_eq!(starts.load(Ordering::SeqCst), 2, "child restarted exactly once");
+    assert_eq!(
+        starts.load(Ordering::SeqCst),
+        2,
+        "child restarted exactly once"
+    );
 }
 
 /// `RestartPolicy::Never` does not restart the child after a panic.
@@ -111,7 +119,9 @@ async fn restart_policy_never_does_not_restart_on_panic() {
 
     let child = CrashCounter::supervise(
         &supervisor,
-        CounterArgs { starts: starts.clone() },
+        CounterArgs {
+            starts: starts.clone(),
+        },
     )
     .restart_policy(RestartPolicy::Never)
     .spawn()
@@ -137,7 +147,9 @@ async fn restart_limit_caps_storms() {
 
     let child = CrashCounter::supervise(
         &supervisor,
-        CounterArgs { starts: starts.clone() },
+        CounterArgs {
+            starts: starts.clone(),
+        },
     )
     .restart_policy(RestartPolicy::Permanent)
     .restart_limit(2, Duration::from_secs(60))

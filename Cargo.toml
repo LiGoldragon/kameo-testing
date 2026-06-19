@@ -13,7 +13,7 @@ name = "kameo_testing"
 path = "src/lib.rs"
 
 [dependencies]
-kameo   = { version = "0.20", features = ["macros"] }
+kameo   = { git = "https://github.com/LiGoldragon/kameo.git", branch = "main", features = ["macros"] }
 tokio   = { version = "1", features = ["macros", "rt-multi-thread", "time", "sync"] }
 futures = "0.3"
 
@@ -24,3 +24,6 @@ tokio-test = "0.4"
 unsafe_code = "forbid"
 unused      = "warn"
 dead_code   = "warn"
+
+[patch.crates-io]
+kameo = { git = "https://github.com/LiGoldragon/kameo.git", branch = "main" }

@@ -66,6 +66,12 @@ trap**: a `Result::Err` from a `tell`'d handler crashes the actor unless
 - `on_start` returning `Err` does **not** call `on_stop`; lifecycle short-circuits to "stopped via on-start failure".
 - `on_stop` panics are **not caught** in 0.20; will propagate as a tokio task panic.
 - `on_stop` *errors* (returned `Err`) are stored in `shutdown_result` (visible via `wait_for_shutdown_result()`); the doc claim that they panic the task is stale.
+- Workspace fork behavior: `on_link_died` receives both the peer's
+  finalized `ActorTerminalOutcome` and the older recursive
+  `ActorStopReason`. Component tests should prefer the terminal outcome
+  when they need to prove a resource-owning peer was actually dropped,
+  killed, stopped, or cleanup-failed; keep the stop reason for policy
+  decisions that still need the nested link-death cause chain.
 - Self-`ask` from inside a handler **deadlocks** (the handler can't reply while occupied). Debug builds with tracing log a warning at the call site.
 - Messages in the mailbox at the time of `kill()` are silently dropped; in-flight handler is aborted at the next `.await`.
 - Restart-on-the-same-mailbox: messages queued at crash time **survive into the new instance** (the `MailboxReceiver` is recycled via `Signal::LinkDied`).
