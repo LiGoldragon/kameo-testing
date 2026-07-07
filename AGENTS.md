@@ -1,13 +1,12 @@
 # kameo-testing — AGENTS
 
 This repository is a workspace-owned testing bed. It feeds
-`~/primary/skills/kameo.md` and is referenced by every report or
+the Kameo discipline and is referenced by every report or
 skill that makes claims about Kameo's behavior.
 
-Read `~/primary/AGENTS.md` for the workspace contract. The
-load-bearing per-repo rules:
+The load-bearing per-repo rules:
 
-- **Tests are the contract.** Every claim in `~/primary/skills/kameo.md`
+- **Tests are the contract.** Every claim in the Kameo discipline
   cites a test in `tests/`. If a behavior is asserted in prose but
   not under a green `nix flake check`, the prose is wrong until proven
   otherwise.
