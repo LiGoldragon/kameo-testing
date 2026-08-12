@@ -21,3 +21,10 @@ The load-bearing per-repo rules:
   the test author — an undocumented behavior, a footgun, a
   divergence from intuition — gets a one-paragraph entry there. The
   Kameo skill draws from this file for its anti-pattern section.
+
+## Protos estate status
+
+Protos estate scope: out of scope
+Stack: not applicable
+Role: upstream test utility
+This is scope metadata, not a stack.
